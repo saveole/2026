@@ -2,10 +2,13 @@
 
 import logging
 import os
-from datetime import date, datetime
+from datetime import date, datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 
 import garth
+
+# China timezone (UTC+8)
+CHINA_TZ = timezone(timedelta(hours=8))
 
 logger = logging.getLogger(__name__)
 
@@ -108,17 +111,27 @@ class GarminClient:
                 logger.warning(f"Empty daily sleep DTO for {target_date}")
                 return None
 
-            # Extract timestamps in milliseconds
-            sleep_start_ms = daily_sleep_dto.sleep_start_timestamp_local
-            sleep_end_ms = daily_sleep_dto.sleep_end_timestamp_local
+            # Print raw sleep data for debugging
+            logger.info(f"Raw daily_sleep_dto: {daily_sleep_dto.__dict__}")
+
+            # Extract GMT timestamps in milliseconds
+            sleep_start_ms = daily_sleep_dto.sleep_start_timestamp_gmt
+            sleep_end_ms = daily_sleep_dto.sleep_end_timestamp_gmt
+
+            logger.info(f"Raw GMT timestamps - sleep_start_ms={sleep_start_ms}, sleep_end_ms={sleep_end_ms}")
 
             if not sleep_start_ms or not sleep_end_ms:
                 logger.warning(f"Missing sleep timestamps for {target_date}")
                 return None
 
-            # Convert milliseconds to datetime (local time)
-            sleep_time = datetime.fromtimestamp(sleep_start_ms / 1000)
-            wake_time = datetime.fromtimestamp(sleep_end_ms / 1000)
+            # Convert GMT/UTC timestamps to China timezone (UTC+8)
+            # Timestamps are in milliseconds, convert to seconds first
+            sleep_time_utc = datetime.fromtimestamp(sleep_start_ms / 1000, tz=timezone.utc)
+            wake_time_utc = datetime.fromtimestamp(sleep_end_ms / 1000, tz=timezone.utc)
+
+            # Convert from UTC to China timezone (UTC+8)
+            sleep_time = sleep_time_utc.astimezone(CHINA_TZ).replace(tzinfo=None)
+            wake_time = wake_time_utc.astimezone(CHINA_TZ).replace(tzinfo=None)
 
             logger.info(
                 f"Retrieved sleep data for {target_date}: "

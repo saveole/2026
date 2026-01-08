@@ -49,15 +49,16 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def get_target_date(date_str: str = None) -> date:
+def get_target_date(date_str: str = None, default_to_today: bool = False) -> date:
     """
     Get the target date for fetching sleep data.
 
     Args:
         date_str: Optional date string in ISO format
+        default_to_today: If True, default to today instead of yesterday
 
     Returns:
-        Target date (defaults to yesterday if not provided)
+        Target date (defaults to yesterday, or today if default_to_today is True)
     """
     if date_str:
         try:
@@ -66,8 +67,11 @@ def get_target_date(date_str: str = None) -> date:
             logger.error(f"Invalid date format: {date_str}. Use YYYY-MM-DD.")
             sys.exit(1)
     else:
-        # Default to yesterday
-        return date.today() - timedelta(days=1)
+        # Default to today or yesterday
+        if default_to_today:
+            return date.today()
+        else:
+            return date.today() - timedelta(days=1)
 
 
 def get_repository() -> str:
@@ -117,8 +121,8 @@ def main():
     """Main entry point."""
     args = parse_arguments()
 
-    # Get target date (default to yesterday)
-    target_date = get_target_date(args.date)
+    # Get target date (default to today for dry-run, yesterday for normal mode)
+    target_date = get_target_date(args.date, default_to_today=args.dry_run)
     logger.info(f"Fetching sleep data for {target_date.isoformat()}")
 
     # Get repository
@@ -128,15 +132,10 @@ def main():
     try:
 
         # Get Garmin domain configuration (for China vs international)
-        garmin_domain = os.environ.get("GARMIN_DOMAIN", "garmin.cn")
-        ssl_verify_str = os.environ.get("GARMIN_SSL_VERIFY", "false")
-        ssl_verify = ssl_verify_str.lower() not in ("false", "0", "no")
-
-        logger.info(f"Using Garmin domain: {garmin_domain}, SSL verify: {ssl_verify}")
 
         garmin_client = GarminClient(
-            domain=garmin_domain,
-            ssl_verify=ssl_verify
+            domain="garmin.cn",
+            ssl_verify=False
         )
         garmin_client.authenticate()
 
