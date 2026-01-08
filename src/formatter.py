@@ -35,8 +35,12 @@ def format_sleep_entry(
     sleep_str = _format_time(sleep_time) if sleep_time else "数据缺失"
     wake_str = _format_time(wake_time) if wake_time else "数据缺失"
 
-    # Format as: YYYY-MM-DD: 昨日睡觉 HH:MM 今天起床 HH:MM
-    result = f"{entry_date.isoformat()}: 昨日睡觉 {sleep_str} 今天起床 {wake_str}"
+    # Get weekday in Chinese: 周一, 周二, ..., 周日
+    weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+    weekday_str = weekdays[entry_date.weekday()]
+
+    # Format as: MM-DD(周几): 昨日睡觉 HH:MM 今天起床 HH:MM
+    result = f"{entry_date.month:02d}-{entry_date.day:02d}({weekday_str}): 昨日睡觉 {sleep_str} 今天起床 {wake_str}"
 
     logger.debug(f"Formatted sleep entry: {result}")
     return result

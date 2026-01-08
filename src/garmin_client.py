@@ -1,7 +1,9 @@
 """Garmin Connect API client using garth library."""
 
+import json
 import logging
 import os
+from dataclasses import asdict
 from datetime import date, datetime, timezone, timedelta
 from typing import Optional, Dict, Any
 
@@ -15,6 +17,38 @@ logger = logging.getLogger(__name__)
 # Garmin domain configuration
 GARMIN_CN_DOMAIN = "garmin.cn"
 GARMIN_COM_DOMAIN = "garmin.com"
+
+
+def _convert_sleep_scores_to_dict(scores_obj: Any) -> Dict[str, Any]:
+    """
+    Convert sleep_scores object to JSON-serializable dictionary.
+
+    Args:
+        scores_obj: SleepScores object from Garmin API
+
+    Returns:
+        Dictionary with all sleep score fields
+    """
+    if scores_obj is None:
+        return {}
+
+    try:
+        # Try to use asdict if it's a dataclass
+        return asdict(scores_obj)
+    except Exception:
+        # Fallback: try to convert to dict from __dict__
+        try:
+            result = {}
+            for key, value in scores_obj.__dict__.items():
+                # Handle nested Score objects
+                if hasattr(value, '__dict__'):
+                    result[key] = value.__dict__
+                else:
+                    result[key] = value
+            return result
+        except Exception:
+            # Last resort: return string representation
+            return str(scores_obj)
 
 
 class GarminClient:
@@ -112,7 +146,7 @@ class GarminClient:
                 return None
 
             # Print raw sleep data for debugging
-            logger.info(f"Raw daily_sleep_dto: {daily_sleep_dto.__dict__}")
+            logger.info(f"Raw daily_sleep_dto: {json.dumps(daily_sleep_dto.__dict__, indent=2, ensure_ascii=False, default=str)}")
 
             # Extract GMT timestamps in milliseconds
             sleep_start_ms = daily_sleep_dto.sleep_start_timestamp_gmt
@@ -138,10 +172,15 @@ class GarminClient:
                 f"sleep={sleep_time.isoformat()}, wake={wake_time.isoformat()}"
             )
 
+            # Convert sleep_scores to JSON-friendly dict
+            sleep_scores_dict = _convert_sleep_scores_to_dict(daily_sleep_dto.sleep_scores)
+
             return {
                 "sleep_time": sleep_time,
                 "wake_time": wake_time,
                 "date": target_date,
+                "daily_sleep_dto": daily_sleep_dto.__dict__,
+                "sleep_scores": sleep_scores_dict,
             }
 
         except Exception as e:
