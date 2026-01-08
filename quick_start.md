@@ -4,7 +4,8 @@
 
 ## 功能特性
 
-- 🌙 **自动同步**: 每天上海时间早上 09:05 自动从 Garmin Connect API 获取前一天的睡眠数据
+- 🌙 **自动同步**: 每天上海时间早上 09:05 自动从 Garmin Connect API 获取当天的睡眠数据
+- 🌍 **时区转换**: 自动将 GMT/UTC 时间转换为中国时区（UTC+8）
 - 📝 **自动记录**: 将睡眠/起床时间自动添加到 issue #1 的评论中
 - 🔁 **重复检测**: 自动检测并跳过已记录的数据，避免重复
 - 📊 **格式化输出**: 统一的中文格式：`2026-01-06: 昨日睡觉 23:30 今天起床 07:00`
@@ -16,6 +17,7 @@
 - **核心库**:
   - [garth](https://github.com/matin/garth) - Garmin Connect API 客户端
   - [PyGithub](https://github.com/PyGithub/PyGithub) - GitHub API 客户端
+- **时区处理**: 使用 Python 标准库 `datetime` 和 `timezone`，将 GMT/UTC 时间转换为中国时区（UTC+8）
 - **自动化**: GitHub Actions
 
 ## 本地开发
@@ -41,7 +43,7 @@ uv run pytest
 ### 手动运行脚本
 
 ```bash
-# 获取昨天的睡眠数据（默认）
+# 获取当天的睡眠数据（默认）
 uv run python scripts/fetch_and_post.py
 
 # 获取指定日期的数据
@@ -124,8 +126,9 @@ GARMIN_SSL_VERIFY=false
 
 - **时间**: 上海时间早上 09:05
 - **时区**: Asia/Shanghai (UTC+8)
-- **数据**: 获取前一天的睡眠数据
+- **数据**: 获取当天的睡眠数据
 - **目标**: Issue #1
+- **时区处理**: 自动将 Garmin API 返回的 GMT/UTC 时间转换为中国时区（UTC+8）
 
 ### 手动触发
 
@@ -146,11 +149,13 @@ GARMIN_SSL_VERIFY=false
 ├── src/
 │   ├── __init__.py
 │   ├── garmin_client.py         # Garmin Connect API 客户端 (使用 garth)
+│   │                            # - 从 GMT 时间戳获取数据
+│   │                            # - 自动转换为中国时区（UTC+8）
 │   ├── formatter.py             # 数据格式化模块
 │   └── github_client.py         # GitHub API 客户端 (使用 PyGithub)
 ├── scripts/
 │   ├── __init__.py
-│   └── fetch_and_post.py        # 主脚本
+│   └── fetch_and_post.py        # 主脚本（默认获取当天数据）
 ├── tests/
 │   ├── test_garmin_client.py    # Garmin 客户端测试
 │   ├── test_formatter.py        # 格式化测试
@@ -160,6 +165,30 @@ GARMIN_SSL_VERIFY=false
 ```
 
 ## 故障排查
+
+### 时间显示不正确
+
+**问题**: 睡眠/起床时间与实际不符
+
+**可能原因**:
+- 时区转换问题
+- Garmin API 返回的时间格式问题
+
+**说明**:
+- 系统使用 Garmin API 的 `sleep_start_timestamp_gmt` 和 `sleep_end_timestamp_gmt`（GMT/UTC 时间）
+- 自动转换为中国时区（UTC+8）
+- 如果时间仍然不正确，请检查：
+  1. 手表时间设置是否正确
+  2. Garmin Connect 账户的时区设置
+
+**调试方法**:
+```bash
+# 使用干运行模式查看原始数据
+uv run python scripts/fetch_and_post.py --dry-run
+
+# 查看日志中的原始时间戳和转换后的时间
+# 会打印 "Raw daily_sleep_dto" 和 "Raw GMT timestamps"
+```
 
 ### 工作流失败：认证错误
 

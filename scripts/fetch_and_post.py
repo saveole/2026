@@ -121,8 +121,8 @@ def main():
     """Main entry point."""
     args = parse_arguments()
 
-    # Get target date (default to today for dry-run, yesterday for normal mode)
-    target_date = get_target_date(args.date, default_to_today=args.dry_run)
+    # Get target date (default to today)
+    target_date = get_target_date(args.date, default_to_today=True)
     logger.info(f"Fetching sleep data for {target_date.isoformat()}")
 
     # Get repository
