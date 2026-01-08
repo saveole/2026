@@ -41,7 +41,8 @@ class GitHubClient:
         self,
         issue_number: int,
         body: str,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
+        exact_match: bool = False
     ) -> bool:
         """
         Post a comment to a GitHub issue with duplicate detection.
@@ -50,6 +51,7 @@ class GitHubClient:
             issue_number: Issue number
             body: Comment body text
             metadata: Optional metadata to include in comment footer
+            exact_match: If True, check for exact content match instead of date pattern
 
         Returns:
             True if comment was posted, False if skipped (duplicate)
@@ -63,7 +65,7 @@ class GitHubClient:
             issue = self.repo.get_issue(issue_number)
 
             # Check for duplicates before posting
-            if self._is_duplicate(issue, body):
+            if self._is_duplicate(issue, body, exact_match=exact_match):
                 logger.info(
                     f"Skipped posting duplicate comment to issue #{issue_number}"
                 )
@@ -87,37 +89,47 @@ class GitHubClient:
             else:
                 raise GitHubClientError(f"Failed to post comment: {e}")
 
-    def _is_duplicate(self, issue: Issue.Issue, body: str) -> bool:
+    def _is_duplicate(self, issue: Issue.Issue, body: str, exact_match: bool = False) -> bool:
         """
         Check if a comment with the same content already exists.
 
         Args:
             issue: PyGithub Issue object
             body: Comment body to check
+            exact_match: If True, check for exact content match instead of date pattern
 
         Returns:
             True if duplicate exists, False otherwise
         """
         try:
-            import re
-
-            # Extract the date pattern from the body (e.g., "2026-01-06:")
-            date_match = re.search(r'\d{4}-\d{2}-\d{2}:', body)
-            if not date_match:
-                return False
-
-            date_prefix = date_match.group(0)
-
             # Get recent comments and check for duplicates
             # PyGithub handles pagination automatically
             comments = list(issue.get_comments())[:10]  # Check last 10 comments
 
-            for comment in comments:
-                if date_prefix in comment.body:
-                    logger.debug(f"Found duplicate comment with date {date_prefix}")
-                    return True
+            if exact_match:
+                # Check for exact content match
+                for comment in comments:
+                    # Compare comment bodies, ignoring any metadata footer
+                    comment_body_without_metadata = self._remove_metadata_footer(comment.body)
+                    if comment_body_without_metadata == body:
+                        logger.debug(f"Found duplicate comment with exact match")
+                        return True
+                return False
+            else:
+                # Original date pattern matching logic
+                import re
+                date_match = re.search(r'\d{4}-\d{2}-\d{2}:', body)
+                if not date_match:
+                    return False
 
-            return False
+                date_prefix = date_match.group(0)
+
+                for comment in comments:
+                    if date_prefix in comment.body:
+                        logger.debug(f"Found duplicate comment with date {date_prefix}")
+                        return True
+
+                return False
 
         except Exception as e:
             logger.warning(f"Failed to check for duplicates: {e}")
@@ -154,6 +166,22 @@ class GitHubClient:
         # Append to body
         return f"{body}\n\n{meta_comment}"
 
+    def _remove_metadata_footer(self, body: str) -> str:
+        """
+        Remove metadata footer from comment body.
+
+        Args:
+            body: Comment body with potential metadata footer
+
+        Returns:
+            Comment body without metadata footer
+        """
+        import re
+        # Remove the metadata comment at the end
+        pattern = r'\n\n<!-- .* -->$'
+        result = re.sub(pattern, '', body, flags=re.DOTALL)
+        return result.strip()
+
     def verify_issue_exists(self, issue_number: int) -> bool:
         """
         Verify that an issue exists and is accessible.
@@ -180,6 +208,33 @@ class GitHubClient:
                 return False
             else:
                 raise GitHubClientError(f"Failed to verify issue: {e}")
+
+    def create_issue(self, title: str, body: str = "") -> int:
+        """
+        Create a new GitHub issue.
+
+        Args:
+            title: Issue title
+            body: Optional issue body/description
+
+        Returns:
+            The issue number of the created issue
+
+        Raises:
+            GitHubAuthError: If authentication fails
+            GitHubClientError: If issue creation fails
+        """
+        try:
+            issue = self.repo.create_issue(title=title, body=body)
+            issue_number = issue.number
+            logger.info(f"Successfully created issue #{issue_number} with title: {title}")
+            return issue_number
+
+        except GithubException as e:
+            if e.status == 401:
+                raise GitHubAuthError("Invalid GitHub token")
+            else:
+                raise GitHubClientError(f"Failed to create issue: {e}")
 
     @classmethod
     def from_env(cls, repo: str) -> "GitHubClient":

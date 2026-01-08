@@ -42,6 +42,61 @@ uv run pytest
 
 ### 手动运行脚本
 
+#### 快速笔记脚本
+
+`quick_note.py` 用于快速记录想法和笔记到 GitHub issue 评论。
+
+```bash
+# 基本用法 - 如果 issue 存在，添加评论；如果不存在，创建新 issue
+uv run python scripts/quick_note.py "Quick thought: I should refactor the auth module" --issue 42
+
+# 指定仓库
+uv run python scripts/quick_note.py "Remember to check API rate limits" --issue 15 --repo octocat/my-project
+
+# 包含孩子年龄信息（从 CHILD_BIRTHDAY 环境变量读取，默认 2025-05-10）
+uv run python scripts/quick_note.py "会笑了" --issue 2 --child
+
+# 自定义孩子生日
+CHILD_BIRTHDAY=2025-06-01 uv run python scripts/quick_note.py "翻身了" --issue 2 --child
+
+# 干运行模式（查看将要发布的内容）
+uv run python scripts/quick_note.py "Test note" --issue 1 --dry-run
+
+# 查看帮助
+uv run python scripts/quick_note.py --help
+```
+
+**特性**:
+- ✅ 快速记录实时想法和笔记
+- 🕐 自动添加时间戳（格式：`yyyy-MM-dd HH:mm:ss`）
+- 👶 可选的孩子年龄信息（几岁几个月几天）
+- 🔍 自动检测重复内容，避免重复发布
+- 📝 如果 issue 不存在，自动创建新 issue（使用笔记内容作为标题）
+- ❌ 清晰的错误提示
+
+**行为说明**:
+- **Issue 存在**: 将笔记作为评论添加到指定 issue
+- **Issue 不存在**: 创建新 issue，使用笔记内容作为 issue 标题，并在控制台返回新 issue 的编号
+
+**发布的评论格式**:
+```
+2026-01-08 19:30:15 - Quick thought: I should refactor the auth module
+
+<!-- data-source: quick-note, posted-at: 2026-01-08T12:34:56Z -->
+```
+
+**包含孩子年龄的评论格式**:
+```
+2026-01-08 19:30:15 - 会笑了 - 7个月29天
+
+<!-- data-source: quick-note, posted-at: 2026-01-08T12:34:56Z -->
+```
+
+**环境变量**:
+- `CHILD_BIRTHDAY`: 孩子生日（格式：`YYYY-MM-DD`，默认：`2025-05-10`）
+
+#### 睡眠数据同步脚本
+
 ```bash
 # 获取当天的睡眠数据（默认）
 uv run python scripts/fetch_and_post.py
@@ -155,7 +210,8 @@ GARMIN_SSL_VERIFY=false
 │   └── github_client.py         # GitHub API 客户端 (使用 PyGithub)
 ├── scripts/
 │   ├── __init__.py
-│   └── fetch_and_post.py        # 主脚本（默认获取当天数据）
+│   ├── fetch_and_post.py        # 睡眠数据同步脚本（默认获取当天数据）
+│   └── quick_note.py            # 快速笔记脚本
 ├── tests/
 │   ├── test_garmin_client.py    # Garmin 客户端测试
 │   ├── test_formatter.py        # 格式化测试
