@@ -3,7 +3,7 @@ name: Garmin Sleep Sync
 on:
   # Daily run at 9:05 AM Beijing time (1:05 AM UTC)
   schedule:
-    - cron: '5 1 * * *'
+    - cron: "5 1 * * *"
 
   # Allow manual triggering
   workflow_dispatch:
@@ -13,9 +13,9 @@ on:
     branches:
       - main
     paths:
-      - 'src/**'
-      - 'scripts/**'
-      - '.github/workflows/garmin-sync.yml'
+      - "src/**"
+      - "scripts/**"
+      - ".github/workflows/garmin-sync.yml"
 
 jobs:
   sync-garmin-data:
@@ -31,7 +31,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
 
       - name: Install uv
         run: |
@@ -52,11 +52,8 @@ jobs:
 
       - name: Fetch and post Garmin data
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
-          GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.G_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
-          GARMIN_DOMAIN: ${{ vars.GARMIN_DOMAIN || 'garmin.com' }}
-          GARMIN_SSL_VERIFY: ${{ vars.GARMIN_SSL_VERIFY || 'true' }}
+          GARTH_TOKEN_STRING: ${{ secrets.GARMIN_SECRET_STRING_CN }}
         run: |
           uv run python scripts/fetch_and_post.py
