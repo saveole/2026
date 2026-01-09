@@ -8,15 +8,6 @@ on:
   # Allow manual triggering
   workflow_dispatch:
 
-  # Run on push to main (for testing)
-  push:
-    branches:
-      - main
-    paths:
-      - "src/**"
-      - "scripts/**"
-      - ".github/workflows/garmin-sync.yml"
-
 jobs:
   sync-garmin-data:
     runs-on: ubuntu-latest
